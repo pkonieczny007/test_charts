@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Chart - TradingView Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background-color: #161b22;
+            padding: 12px 20px;
+            border-bottom: 1px solid #21262d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            color: #58a6ff;
+            font-weight: 600;
+        }
+        
+        .pair-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3fb950;
+        }
+        
+        .change {
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #1a7f3714;
+            color: #3fb950;
+        }
+        
+        .change.negative {
+            background-color: #f8514914;
+            color: #f85149;
+        }
+        
+        .chart-container {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            background-color: #0d1117;
+        }
+        
+        .tradingview-widget-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #tradingview-widget {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b949e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>₿ BTC/USDT</h1>
+            <div class="pair-info">
+                <span class="price" id="current-price">$45,234.56</span>
+                <span class="change" id="price-change">+2.34%</span>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="loading" id="loading">Ładowanie wykresu...</div>
+            <div class="tradingview-widget-container">
+                <div id="tradingview-widget"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TradingView Widget Script -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script type="text/javascript">
+        // Konfiguracja TradingView Widget (dokładnie jak w DexScreener)
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": "BINANCE:BTCUSDT",
+            "interval": "15",
+            "timezone": "Europe/Warsaw",
+            "theme": "dark",
+            "style": "1",
+            "locale": "pl",
+            "toolbar_bg": "#0d1117",
+            "enable_publishing": false,
+            "hide_top_toolbar": false,
+            "hide_legend": false,
+            "save_image": true,
+            "container_id": "tradingview-widget",
+            "studies": [
+                "Volume@tv-basicstudies"
+            ],
+            "show_popup_button": true,
+            "popup_width": "1000",
+            "popup_height": "650",
+            "allow_symbol_change": true,
+            "details": true,
+            "hotlist": true,
+            "calendar": false,
+            "withdateranges": true,
+            "hide_side_toolbar": false,
+            "disabled_features": [],
+            "enabled_features": ["study_templates"],
+            "backgroundColor": "#0d1117",
+            "gridColor": "rgba(42, 46, 57, 0.06)",
+            "overrides": {
+                "paneProperties.background": "#0d1117",
+                "paneProperties.backgroundType": "solid",
+                "paneProperties.vertGridProperties.color": "#161b22",
+                "paneProperties.horzGridProperties.color": "#161b22",
+                "symbolWatermarkProperties.transparency": 90,
+                "scalesProperties.textColor": "#8b949e",
+                "mainSeriesProperties.candleStyle.upColor": "#3fb950",
+                "mainSeriesProperties.candleStyle.downColor": "#f85149",
+                "mainSeriesProperties.candleStyle.drawWick": true,
+                "mainSeriesProperties.candleStyle.drawBorder": false,
+                "mainSeriesProperties.candleStyle.borderUpColor": "#3fb950",
+                "mainSeriesProperties.candleStyle.borderDownColor": "#f85149",
+                "mainSeriesProperties.candleStyle.wickUpColor": "#3fb950",
+                "mainSeriesProperties.candleStyle.wickDownColor": "#f85149"
+            }
+        });
+
+        // Ukryj loading po załadowaniu
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 2000);
+
+        // Aktualizacja ceny w headerze (przykładowa)
+        function updatePrice() {
+            fetch('/api/crypto-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const lastCandle = data[data.length - 1];
+                        const firstCandle = data[0];
+                        const change = ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100;
+                        
+                        document.getElementById('current-price').textContent = 
+                            `$${lastCandle.close.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                        
+                        const changeElement = document.getElementById('price-change');
+                        changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                        
+                        if (change < 0) {
+                            changeElement.classList.add('negative');
+                        } else {
+                            changeElement.classList.remove('negative');
+                        }
+                    }
+                })
+                .catch(error => console.error('Błąd:', error));
+        }
+
+        // Aktualizuj cenę co 5 sekund
+        updatePrice();
+        setInterval(updatePrice, 5000);
+    </script>
+</body>
+</html>
