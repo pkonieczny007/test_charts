@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Chart - TradingView Widget</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            overflow: hidden;
+        }
+        
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background-color: #161b22;
+            padding: 12px 20px;
+            border-bottom: 1px solid #21262d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            color: #58a6ff;
+            font-weight: 600;
+        }
+        
+        .indicators-btn {
+            background-color: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .indicators-btn:hover {
+            background-color: #30363d;
+            border-color: #58a6ff;
+        }
+        
+        .pair-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3fb950;
+        }
+        
+        .change {
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #1a7f3714;
+            color: #3fb950;
+        }
+        
+        .change.negative {
+            background-color: #f8514914;
+            color: #f85149;
+        }
+        
+        /* Indicators Panel */
+        .indicators-panel {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            min-width: 280px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        
+        .indicators-panel.show {
+            display: block;
+        }
+        
+        .indicators-panel h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #c9d1d9;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 8px;
+        }
+        
+        .indicator-item {
+            padding: 10px 12px;
+            margin-bottom: 4px;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .indicator-item:hover {
+            background-color: #21262d;
+            border-color: #58a6ff;
+        }
+        
+        .indicator-item.active {
+            background-color: #1a7f3714;
+            border-color: #3fb950;
+        }
+        
+        .indicator-name {
+            font-size: 14px;
+            color: #c9d1d9;
+        }
+        
+        .indicator-toggle {
+            width: 40px;
+            height: 20px;
+            background-color: #30363d;
+            border-radius: 10px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        
+        .indicator-item.active .indicator-toggle {
+            background-color: #3fb950;
+        }
+        
+        .indicator-toggle::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background-color: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+        
+        .indicator-item.active .indicator-toggle::after {
+            left: 22px;
+        }
+        
+        .chart-container {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            background-color: #0d1117;
+        }
+        
+        .tradingview-widget-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #tradingview-widget {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b949e;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>₿ BTC/USDT</h1>
+                <button class="indicators-btn" onclick="toggleIndicatorsPanel()">
+                    <svg fill="currentColor" viewBox="0 0 16 16" style="width: 16px; height: 16px;">
+                        <path d="M2 2.5a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h12a.5.5 0 0 0 .5-.5V3a.5.5 0 0 0-.5-.5H2zm0-1h12A1.5 1.5 0 0 1 15.5 3v11a1.5 1.5 0 0 1-1.5 1.5H2A1.5 1.5 0 0 1 .5 14V3A1.5 1.5 0 0 1 2 1.5z"/>
+                        <path d="M3 5h2v6H3V5zm3 0h2v6H6V5zm3 0h2v6H9V5zm3 0h2v6h-2V5z"/>
+                    </svg>
+                    Indicators
+                </button>
+            </div>
+            <div class="pair-info">
+                <span class="price" id="current-price">$45,234.56</span>
+                <span class="change" id="price-change">+2.34%</span>
+            </div>
+        </div>
+
+        <!-- Indicators Panel -->
+        <div class="indicators-panel" id="indicators-panel">
+            <h3>Technical Indicators</h3>
+            
+            <div class="indicator-item" onclick="toggleIndicator('MACD', this)">
+                <span class="indicator-name">MACD</span>
+                <div class="indicator-toggle"></div>
+            </div>
+            
+            <div class="indicator-item" onclick="toggleIndicator('RSI', this)">
+                <span class="indicator-name">RSI</span>
+                <div class="indicator-toggle"></div>
+            </div>
+            
+            <div class="indicator-item" onclick="toggleIndicator('BB', this)">
+                <span class="indicator-name">Bollinger Bands</span>
+                <div class="indicator-toggle"></div>
+            </div>
+            
+            <div class="indicator-item" onclick="toggleIndicator('EMA', this)">
+                <span class="indicator-name">EMA (20)</span>
+                <div class="indicator-toggle"></div>
+            </div>
+            
+            <div class="indicator-item" onclick="toggleIndicator('SMA', this)">
+                <span class="indicator-name">SMA (20)</span>
+                <div class="indicator-toggle"></div>
+            </div>
+            
+            <div class="indicator-item" onclick="toggleIndicator('STOCH', this)">
+                <span class="indicator-name">Stochastic</span>
+                <div class="indicator-toggle"></div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="loading" id="loading">Ładowanie wykresu...</div>
+            <div class="tradingview-widget-container">
+                <div id="tradingview-widget"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <script type="text/javascript">
+        let activeIndicators = {
+            'Volume': true  // Volume zawsze aktywny
+        };
+
+        // Mapowanie wskaźników
+        const indicatorMap = {
+            'MACD': 'MACD@tv-basicstudies',
+            'RSI': 'RSI@tv-basicstudies',
+            'BB': 'BB@tv-basicstudies',
+            'EMA': 'MAExp@tv-basicstudies',
+            'SMA': 'MASimple@tv-basicstudies',
+            'STOCH': 'Stochastic@tv-basicstudies'
+        };
+
+        function createWidget() {
+            // Zbierz aktywne wskaźniki
+            const studies = ['Volume@tv-basicstudies'];
+            Object.keys(activeIndicators).forEach(key => {
+                if (activeIndicators[key] && indicatorMap[key]) {
+                    studies.push(indicatorMap[key]);
+                }
+            });
+
+            // Wyczyść kontener
+            document.getElementById('tradingview-widget').innerHTML = '';
+
+            // Utwórz nowy widget
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": "BINANCE:BTCUSDT",
+                "interval": "15",
+                "timezone": "Europe/Warsaw",
+                "theme": "dark",
+                "style": "1",
+                "locale": "pl",
+                "toolbar_bg": "#0d1117",
+                "enable_publishing": false,
+                "hide_top_toolbar": false,
+                "hide_legend": false,
+                "save_image": true,
+                "container_id": "tradingview-widget",
+                "studies": studies,
+                "show_popup_button": true,
+                "popup_width": "1000",
+                "popup_height": "650",
+                "allow_symbol_change": true,
+                "details": true,
+                "hotlist": true,
+                "calendar": false,
+                "withdateranges": true,
+                "hide_side_toolbar": false,
+                "backgroundColor": "#0d1117",
+                "gridColor": "rgba(42, 46, 57, 0.06)",
+                "overrides": {
+                    "paneProperties.background": "#0d1117",
+                    "paneProperties.backgroundType": "solid",
+                    "paneProperties.vertGridProperties.color": "#161b22",
+                    "paneProperties.horzGridProperties.color": "#161b22",
+                    "symbolWatermarkProperties.transparency": 90,
+                    "scalesProperties.textColor": "#8b949e",
+                    "mainSeriesProperties.candleStyle.upColor": "#3fb950",
+                    "mainSeriesProperties.candleStyle.downColor": "#f85149",
+                    "mainSeriesProperties.candleStyle.drawWick": true,
+                    "mainSeriesProperties.candleStyle.drawBorder": false,
+                    "mainSeriesProperties.candleStyle.borderUpColor": "#3fb950",
+                    "mainSeriesProperties.candleStyle.borderDownColor": "#f85149",
+                    "mainSeriesProperties.candleStyle.wickUpColor": "#3fb950",
+                    "mainSeriesProperties.candleStyle.wickDownColor": "#f85149"
+                }
+            });
+
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Toggle panel wskaźników
+        function toggleIndicatorsPanel() {
+            const panel = document.getElementById('indicators-panel');
+            panel.classList.toggle('show');
+        }
+
+        // Zamknij panel po kliknięciu poza nim
+        document.addEventListener('click', function(event) {
+            const panel = document.getElementById('indicators-panel');
+            const btn = document.querySelector('.indicators-btn');
+            
+            if (!panel.contains(event.target) && !btn.contains(event.target)) {
+                panel.classList.remove('show');
+            }
+        });
+
+        // Toggle wskaźnika
+        function toggleIndicator(indicatorKey, element) {
+            if (activeIndicators[indicatorKey]) {
+                delete activeIndicators[indicatorKey];
+                element.classList.remove('active');
+            } else {
+                activeIndicators[indicatorKey] = true;
+                element.classList.add('active');
+            }
+            
+            // Pokaż loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').textContent = 'Aktualizowanie wskaźników...';
+            
+            // Przeładuj widget z nowymi wskaźnikami
+            setTimeout(() => {
+                createWidget();
+            }, 100);
+        }
+
+        // Inicjalizacja
+        createWidget();
+
+        // Aktualizacja ceny w headerze
+        function updatePrice() {
+            fetch('/api/crypto-data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const lastCandle = data[data.length - 1];
+                        const firstCandle = data[0];
+                        const change = ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100;
+                        
+                        document.getElementById('current-price').textContent = 
+                            `$${lastCandle.close.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+                        
+                        const changeElement = document.getElementById('price-change');
+                        changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+                        
+                        if (change < 0) {
+                            changeElement.classList.add('negative');
+                        } else {
+                            changeElement.classList.remove('negative');
+                        }
+                    }
+                })
+                .catch(error => console.error('Błąd:', error));
+        }
+
+        updatePrice();
+        setInterval(updatePrice, 5000);
+    </script>
+</body>
+</html>
